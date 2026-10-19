@@ -232,7 +232,12 @@ async function deleteEditorial(i){if(cloudMode&&(!isAdmin||adminRole==='comando_
 
 /* CONTROLE DE EFETIVO DO SETOR NORTE: tabela independente e RLS no Supabase. */
 let efetivoRecords=[],efetivoLoaded=false,efetivoError='',efetivoEditId=null;
-const efetivoSituacoes=['Ativo','Afastado','Reserva'];
+const efetivoSituacoes=['Ativo','Afastado','Férias'];
+const diaLocal=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
+const diasEntre=(inicio,fim)=>Math.round((Date.parse(fim+'T12:00:00Z')-Date.parse(inicio+'T12:00:00Z'))/86400000);
+const somarDias=(inicio,dias)=>{const d=new Date(inicio+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+dias);return d.toISOString().slice(0,10)};
+const situacaoAtual=p=>p.situacao==='Férias'&&p.ferias_inicio&&Number.isInteger(Number(p.ferias_dias))&&Number(p.ferias_dias)>0?(diaLocal()<p.ferias_inicio?'Ativo':diaLocal()>=somarDias(p.ferias_inicio,Number(p.ferias_dias))?'Ativo':'Férias'):p.situacao;
+const detalheFerias=p=>situacaoAtual(p)==='Férias'?`Férias · ${diasEntre(diaLocal(),somarDias(p.ferias_inicio,Number(p.ferias_dias)))} dia(s) até o retorno`:situacaoAtual(p);
 const hierarquiaEfetivo=['General Federal','Coronel-General','Tenente-General','Major-General','Coronel-Auxiliar','Coronel','Major','Capitão','Tenente','Sargento-Mor','1º Sargento','Sargento','Soldado','Recruta'];
 const patenteNormalizada=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[º°ª]/g,'').replace(/[^a-z0-9]/g,'');
 const ordemPatente=v=>{const n=patenteNormalizada(v);const i=hierarquiaEfetivo.findIndex(p=>patenteNormalizada(p)===n);return i<0?hierarquiaEfetivo.length:i};
@@ -247,10 +252,10 @@ function filtrarEfetivo(){
  if(busca)efetivoBusca=busca.value;
  if(patente)efetivoFiltroPatente=patente.value;
  if(situacao)efetivoFiltroSituacao=situacao.value;
- const visiveis=efetivoSorted().filter(p=>textoBusca(p.nome_militar).includes(textoBusca(efetivoBusca))&&(!efetivoFiltroPatente||patenteNormalizada(p.patente)===efetivoFiltroPatente)&&(!efetivoFiltroSituacao||p.situacao===efetivoFiltroSituacao));
+ const visiveis=efetivoSorted().filter(p=>textoBusca(p.nome_militar).includes(textoBusca(efetivoBusca))&&(!efetivoFiltroPatente||patenteNormalizada(p.patente)===efetivoFiltroPatente)&&(!efetivoFiltroSituacao||situacaoAtual(p)===efetivoFiltroSituacao));
  const corpo=document.getElementById('efetivo-tbody');
  const contador=document.getElementById('efetivo-contador');
- if(corpo)corpo.innerHTML=visiveis.map(p=>`<tr><td>${esc(p.nome_militar)}</td><td>${esc(p.patente)}</td><td>${esc(p.cargo||'—')}</td><td>${esc(p.situacao)}</td></tr>`).join('')||'<tr><td colspan="4">Nenhum militar encontrado com os filtros selecionados.</td></tr>';
+ if(corpo)corpo.innerHTML=visiveis.map(p=>`<tr><td>${esc(p.nome_militar)}</td><td>${esc(p.patente)}</td><td>${esc(p.cargo||'—')}</td><td>${esc(detalheFerias(p))}</td></tr>`).join('')||'<tr><td colspan="4">Nenhum militar encontrado com os filtros selecionados.</td></tr>';
  if(contador)contador.textContent=`Exibindo ${visiveis.length} de ${efetivoRecords.length} militar(es)`;
 }
 function limparFiltrosEfetivo(){
@@ -261,8 +266,8 @@ function limparFiltrosEfetivo(){
 // Indicadores calculados a partir dos dados públicos já carregados.
 function indicadoresEfetivo(){
  const total=efetivoRecords.length;
- const contagem=s=>efetivoRecords.filter(p=>p.situacao===s).length;
- const dados=[['TOTAL',total],['ATIVOS',contagem('Ativo')],['AFASTADOS',contagem('Afastado')],['RESERVA',contagem('Reserva')]];
+ const contagem=s=>efetivoRecords.filter(p=>situacaoAtual(p)===s).length;
+ const dados=[['TOTAL',total],['ATIVOS',contagem('Ativo')],['AFASTADOS',contagem('Afastado')],['FÉRIAS',contagem('Férias')]];
  return `<div class="efetivo-indicadores">${dados.map(([rotulo,valor])=>`<div class="efetivo-indicador"><span>${rotulo}</span><strong>${valor}</strong></div>`).join('')}</div>`;
 }
 function distribuicaoPatentes(){
@@ -273,7 +278,7 @@ function distribuicaoPatentes(){
 }
 function exportarEfetivoCSV(){
  if(!efetivoLoaded||efetivoError)return;
- const linhas=[['Nome militar','Patente','Função','Situação'],...efetivoSorted().map(p=>[p.nome_militar,p.patente,p.cargo||'',p.situacao])];
+ const linhas=[['Nome militar','Patente','Função','Situação'],...efetivoSorted().map(p=>[p.nome_militar,p.patente,p.cargo||'',detalheFerias(p)])];
  const celula=v=>'"'+String(v??'').replace(/^[=+@\-\t\r]/, "'" ).replace(/"/g,'""')+'"';
  const csv='\uFEFF'+linhas.map(l=>l.map(celula).join(';')).join('\r\n');
  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
@@ -296,14 +301,15 @@ function efetivoAdminContent(){
  if(!cloudMode)return '<div class="admin-note">Conecte o Supabase para gerenciar o efetivo.</div>';
  if(!isAdmin)return '<div class="admin-note">Faça login para gerenciar o efetivo.</div>';
  const obj=efetivoEditId?efetivoRecords.find(x=>x.id===efetivoEditId):null;
- const entries=efetivoSorted().map(p=>`<div class="admin-row"><div><b>${esc(p.nome_militar)}</b><small>${esc(p.patente)} · ${esc(p.cargo||'Sem função')} · ${esc(p.situacao)}</small></div><button onclick="editEfetivo('${esc(p.id)}')">EDITAR</button><button onclick="deleteEfetivo('${esc(p.id)}')">EXCLUIR</button></div>`).join('');
+ const entries=efetivoSorted().map(p=>`<div class="admin-row"><div><b>${esc(p.nome_militar)}</b><small>${esc(p.patente)} · ${esc(p.cargo||'Sem função')} · ${esc(detalheFerias(p))}</small></div><button onclick="editEfetivo('${esc(p.id)}')">EDITAR</button><button onclick="deleteEfetivo('${esc(p.id)}')">EXCLUIR</button></div>`).join('');
  const select=efetivoSituacoes.map(v=>`<option value="${v}" ${obj?.situacao===v?'selected':''}>${v}</option>`).join('');
- return `<h3>CONTROLE DE EFETIVO — SETOR NORTE</h3><p class="muted">Cadastre e atualize militares do setor. Sem fotografias.</p>${efetivoError?`<div class="admin-note">${esc(efetivoError)}</div>`:''}<div class="admin-pill">${efetivoRecords.length} militar(es)</div><div style="margin-top:14px">${efetivoLoaded?(entries||'<div class="admin-empty">Nenhum militar cadastrado.</div>'):'<p class="muted">Carregando dados...</p>'}</div><h3 style="margin-top:22px">${obj?'EDITAR MILITAR':'CADASTRAR MILITAR'}</h3><form class="admin-form" onsubmit="saveEfetivo(event)"><label>Nome militar<input name="nome_militar" required maxlength="120" value="${esc(obj?.nome_militar||'')}"></label><label>Patente<input name="patente" required maxlength="100" value="${esc(obj?.patente||'')}"></label><label>Cargo / função<input name="cargo" maxlength="160" value="${esc(obj?.cargo||'')}"></label><label>Situação<select name="situacao">${select}</select></label><div class="admin-toolbar"><button type="submit">${obj?'SALVAR ALTERAÇÕES':'CADASTRAR MILITAR'}</button>${obj?'<button type="button" onclick="efetivoEditId=null;render()">CANCELAR</button>':''}</div></form>`;
+ return `<h3>CONTROLE DE EFETIVO — SETOR NORTE</h3><p class="muted">Cadastre e atualize militares do setor. Sem fotografias.</p>${efetivoError?`<div class="admin-note">${esc(efetivoError)}</div>`:''}<div class="admin-pill">${efetivoRecords.length} militar(es)</div><div style="margin-top:14px">${efetivoLoaded?(entries||'<div class="admin-empty">Nenhum militar cadastrado.</div>'):'<p class="muted">Carregando dados...</p>'}</div><h3 style="margin-top:22px">${obj?'EDITAR MILITAR':'CADASTRAR MILITAR'}</h3><form class="admin-form" onsubmit="saveEfetivo(event)"><label>Nome militar<input name="nome_militar" required maxlength="120" value="${esc(obj?.nome_militar||'')}"></label><label>Patente<input name="patente" required maxlength="100" value="${esc(obj?.patente||'')}"></label><label>Cargo / função<input name="cargo" maxlength="160" value="${esc(obj?.cargo||'')}"></label><label>Situação<select name="situacao" onchange="alternarCamposFerias(this.form)">${select}</select></label><div id="campos-ferias" class="admin-form" style="${obj?.situacao==='Férias'?'':'display:none'}"><label>Início das férias<input type="date" name="ferias_inicio" value="${esc(obj?.ferias_inicio||diaLocal())}"></label><label>Quantidade de dias de férias<input type="number" min="1" max="365" name="ferias_dias" value="${esc(obj?.ferias_dias||'')}" placeholder="Ex.: 15"></label><p class="admin-hint">A contagem começa na data de início. O retorno é no dia seguinte ao último dia de férias.</p></div><div class="admin-toolbar"><button type="submit">${obj?'SALVAR ALTERAÇÕES':'CADASTRAR MILITAR'}</button>${obj?'<button type="button" onclick="efetivoEditId=null;render()">CANCELAR</button>':''}</div></form>`;
 }
+function alternarCamposFerias(f){const ativo=f.elements.situacao.value==='Férias';const area=f.querySelector('#campos-ferias');if(area)area.style.display=ativo?'grid':'none';for(const nome of ['ferias_inicio','ferias_dias'])f.elements[nome].required=ativo}
 async function loadEfetivo(){
  if(!cloudMode)return;
  try{
-  const rows=await api('/rest/v1/efetivo_norte?select=id,nome_militar,patente,cargo,situacao&order=nome_militar.asc',{},Boolean(isAdmin&&session?.access_token));
+  const rows=await api('/rest/v1/efetivo_norte?select=id,nome_militar,patente,cargo,situacao,ferias_inicio,ferias_dias&order=nome_militar.asc',{},Boolean(isAdmin&&session?.access_token));
   efetivoRecords=Array.isArray(rows)?rows:[];efetivoError='';efetivoLoaded=true;
  }catch(e){efetivoError='Não foi possível carregar o efetivo: '+e.message;efetivoLoaded=false}
  const p=decodeURIComponent(location.hash.slice(1));
@@ -315,6 +321,7 @@ async function saveEfetivo(ev){
  ev.preventDefault();if(!isAdmin||!cloudMode)return;
  const f=ev.target,fd=new FormData(f),data={nome_militar:String(fd.get('nome_militar')||'').trim(),patente:String(fd.get('patente')||'').trim(),cargo:String(fd.get('cargo')||'').trim(),situacao:String(fd.get('situacao')||'')};
  if(!data.nome_militar||!data.patente||!efetivoSituacoes.includes(data.situacao))return alert('Confira os campos.');
+ if(data.situacao==='Férias'){data.ferias_inicio=String(fd.get('ferias_inicio')||'');data.ferias_dias=Number(fd.get('ferias_dias'));if(!/^\d{4}-\d{2}-\d{2}$/.test(data.ferias_inicio)||!Number.isInteger(data.ferias_dias)||data.ferias_dias<1||data.ferias_dias>365)return alert('Informe a data de início e a quantidade de dias (1 a 365).')}else{data.ferias_inicio=null;data.ferias_dias=null}
  const submit=f.querySelector('[type=submit]');submit.disabled=true;
  try{
   if(efetivoEditId)await api('/rest/v1/efetivo_norte?id=eq.'+encodeURIComponent(efetivoEditId),{method:'PATCH',headers:{Prefer:'return=representation'},body:JSON.stringify(data)},true);
@@ -328,6 +335,7 @@ async function deleteEfetivo(id){
  catch(e){alert('Não foi possível excluir: '+e.message)}
 }
 
+setInterval(()=>{if(efetivoLoaded&&location.hash==='#efetivo'){document.getElementById('app').innerHTML=efetivoPublicPage();atualizarFiltrosEfetivo()}},60000);
 if(cloudMode){
   // Em modo conectado não exibe dados locais como se fossem publicados.
   document.getElementById('app').innerHTML=heading('CARREGANDO PORTAL','Consultando informações oficiais')+wrap('<p class="muted">Aguarde...</p>');

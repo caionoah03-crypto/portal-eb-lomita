@@ -272,7 +272,12 @@ content=function(p){
 };
 
 const beforeEditorialContent=content;
-content=function(p){return editablePages.some(x=>x[0]===p)?editorialPage(p):beforeEditorialContent(p)};
+content=function(p){
+  if(p==='estudos') return estudosContentAnterior(p);
+  return editablePages.some(x=>x[0]===p)
+    ? editorialPage(p)
+    : beforeEditorialContent(p);
+};
 const beforeEditorialAdminContent=adminContent;
 adminContent=function(){if(adminTab==='efetivo_norte')return efetivoAdminContent();if(adminTab!=='editor')return beforeEditorialAdminContent();
  const items=editorialRecords(editorPage);const obj=editorId?items.find(x=>x.id===editorId):null;

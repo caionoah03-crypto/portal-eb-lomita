@@ -232,7 +232,10 @@ async function deleteEditorial(i){if(cloudMode&&(!isAdmin||adminRole==='comando_
 /* CONTROLE DE EFETIVO DO SETOR NORTE: tabela independente e RLS no Supabase. */
 let efetivoRecords=[],efetivoLoaded=false,efetivoError='',efetivoEditId=null;
 const efetivoSituacoes=['Ativo','Afastado','Reserva'];
-const efetivoSorted=()=>efetivoRecords.slice().sort((a,b)=>String(a.patente).localeCompare(String(b.patente),'pt-BR')||String(a.nome_militar).localeCompare(String(b.nome_militar),'pt-BR'));
+const hierarquiaEfetivo=['General Federal','Coronel-General','Tenente-General','Major-General','Coronel-Auxiliar','Coronel','Major','Capitão','Tenente','Sargento-Mor','1º Sargento','Sargento','Soldado','Recruta'];
+const patenteNormalizada=v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[º°ª]/g,'').replace(/[^a-z0-9]/g,'');
+const ordemPatente=v=>{const n=patenteNormalizada(v);const i=hierarquiaEfetivo.findIndex(p=>patenteNormalizada(p)===n);return i<0?hierarquiaEfetivo.length:i};
+const efetivoSorted=()=>efetivoRecords.slice().sort((a,b)=>ordemPatente(a.patente)-ordemPatente(b.patente)||String(a.nome_militar).localeCompare(String(b.nome_militar),'pt-BR'));
 function efetivoPublicPage(){
  const status=efetivoError?`<div class="admin-note">${esc(efetivoError)}</div>`:!efetivoLoaded?'<p class="muted">Carregando efetivo...</p>':'';
  const rows=efetivoSorted().map(p=>`<tr><td>${esc(p.nome_militar)}</td><td>${esc(p.patente)}</td><td>${esc(p.cargo||'—')}</td><td>${esc(p.situacao)}</td></tr>`).join('');

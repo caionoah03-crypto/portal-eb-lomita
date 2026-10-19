@@ -114,7 +114,7 @@ if(p==='cronograma')html=heading('CRONOGRAMA','Programação e atividades do Ex�
 if(p==='efetivo')html=efetivoPublicPage();
  if(p==='comando')html=heading('COMANDO DO EXÉRCITO DE LOMITA','Liderança · Hierarquia · Disciplina · Compromisso')+wrap(`<p class="muted">Conheça o Alto Comando do Exército de Lomita e a liderança do Setor Norte.</p><h2 class="sectiontitle">ALTO COMANDO — EXÉRCITO DE LOMITA</h2><div class="cols">${peopleMarkup('alto')}</div><h2 class="sectiontitle" style="margin-top:30px">COMANDO DO SETOR NORTE</h2><div class="cols">${peopleMarkup('norte')}</div>`);
 return html+appendSection(p)};
-const originalRender=render;render=function(){let p=decodeURIComponent(location.hash.slice(1))||'inicio';if(![...pages.map(x=>x[0]),'rp','eb','hierarquia','quartel','primeiros'].includes(p))p='inicio';$('#sidemenu').innerHTML=pages.map(([id,ico,title])=>`<button class="navbtn ${id===p?'active':''}" onclick="go('${id}')"><span class="ico">${ico}</span>${title}</button>`).join('');$('#app').innerHTML=content(p);document.title=`${pages.find(x=>x[0]===p)?.[2]||'Portal'} | Exército de Lomita`;if(p==='admin'&&adminTab==='sections')loadSection();if(p==='efetivo')atualizarFiltrosEfetivo();if((p==='efetivo'||(p==='admin'&&(adminTab==='efetivo_norte'||adminRole==='comando_norte')))&&cloudMode)loadEfetivo()};
+const originalRender=render;render=function(){let p=decodeURIComponent(location.hash.slice(1))||'inicio';if(![...pages.map(x=>x[0]),...editablePages.map(x=>x[0])].includes(p))p='inicio';$('#sidemenu').innerHTML=pages.map(([id,ico,title])=>`<button class="navbtn ${id===p?'active':''}" onclick="go('${id}')"><span class="ico">${ico}</span>${title}</button>`).join('');$('#app').innerHTML=content(p);document.title=`${pages.find(x=>x[0]===p)?.[2]||'Portal'} | Exército de Lomita`;if(p==='admin'&&adminTab==='sections')loadSection();if(p==='efetivo')atualizarFiltrosEfetivo();if((p==='efetivo'||(p==='admin'&&(adminTab==='efetivo_norte'||adminRole==='comando_norte')))&&cloudMode)loadEfetivo()};
 
 /* CONEXÃO OPCIONAL COM SUPABASE: configuração pública em config.js;
    privilégios são validados pelo banco (RLS), nunca pelo JavaScript. */
@@ -252,7 +252,7 @@ const materiaisIniciais={
 };
 for(const [id,label] of novosManuais){
  editablePages.push([id,label]);
- pages.splice(pages.findIndex(x=>x[0]==='admin'),0,[id,'▤',label]);
+ // Os manuais são acessados pela Central de Estudos, sem ocupar o menu lateral.
 }
 const defaultEditorialAnterior=defaultEditorial;
 defaultEditorial=function(p){if(materiaisIniciais[p])return materiaisIniciais[p].map(([title,body],i)=>({id:'manual-'+p+'-'+i,title,body}));return defaultEditorialAnterior(p)};
@@ -273,7 +273,7 @@ content=function(p){
 
 const beforeEditorialContent=content;
 content=function(p){
-  if(p==='estudos') return estudosContentAnterior(p);
+  if(p==='estudos') return beforeEditorialContent(p);
   return editablePages.some(x=>x[0]===p)
     ? editorialPage(p)
     : beforeEditorialContent(p);

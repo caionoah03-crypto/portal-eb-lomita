@@ -201,6 +201,76 @@ function editorialPage(p){
  const rows=items.map(x=>p==='macros'?`<div class="rule macro"><b>${esc(x.title)}</b><p>${esc(x.body)}</p><button class="copybtn" data-copy="${esc(x.body)}" onclick="navigator.clipboard?.writeText(this.dataset.copy).then(()=>this.textContent='Copiado!').catch(()=>window.prompt('Copie a macro:',this.dataset.copy))">COPIAR MACRO</button></div>`:block(esc(x.title),esc(x.body))).join('')||'<div class="empty">Nenhuma informação publicada nesta seção.</div>';
  return heading(title,sub)+wrap(intro+(p==='macros'?`<div id="macrolist">${rows}</div>`:rows)+(p==='primeiros'?`<button class="goldbtn" onclick="go('macros')">CONSULTAR MACROS <span>➜</span></button>`:''));
 }
+
+/* CENTRAL DE ESTUDOS — material Semideus Master, edição pelo painel existente. */
+const novosManuais=[
+ ['ronda','Manual de Ronda'],['blitz','Manual de Blitz'],['viaturas','Manual de Viaturas'],['conduta','Conduta e Eventos'],['codigos','Códigos Operacionais']
+];
+const materiaisIniciais={
+ ronda:[
+  ['Funções da equipe','P1: motorista e responsável pela liderança do comboio. P2: comunicação e checagens de QTH. P3: observador, atento ao redor da VTR. P4: apoio, permanecendo em QRV para auxiliar quando necessário.'],
+  ['Velocidades de referência','15 km/h: em frente ao QG durante posicionamento e organização. 30 km/h: deslocamentos entre QGs. 60 km/h: situações específicas de fuga de VDM ou reposicionamento/ocultação da VTR.'],
+  ['Identificação das viaturas','QSV 01, QSV 02 e QSV 03: identificações utilizadas para facilitar a comunicação.'],
+  ['Sucessão de função','Se o P1 cair, o P2 assume o P1 e o P3 assume o P2.'],
+  ['Comunicação em ronda','A comunicação deve ser priorizada pelo P2. Durante a ronda, a call deve permanecer cessada, salvo autorização do responsável pela operação.']
+ ],
+ blitz:[
+  ['Objetivo no RP','Operação realizada pelo Exército de Lomita para reforçar a segurança pública, manter a ordem nas ruas e combater práticas ilegais dentro da cidade, conforme o material de estudo.'],
+  ['Organização','Definir o local; organizar a equipe; dividir as funções; estabelecer a comunicação; posicionar as VTRs adequadamente.'],
+  ['Funções','Comandante da blitz: coordena a operação e toma decisões. Equipe de abordagem: realiza sinalização, parada e contato inicial. Equipe de vistoria: verifica documentos e realiza inspeção prevista no procedimento. Equipe de apoio: cobertura e monitoramento do perímetro.'],
+  ['Macro — abordagem padrão','ATENÇÃO! O SENHOR(A) ESTÁ SENDO ABORDADO PELO EXÉRCITO DE LOMITA EM UMA OPERAÇÃO DE BLITZ. ENCOSTE O VEÍCULO E COLABORE COM A EQUIPE.'],
+  ['Macro — solicitação de documentos','ESTAREI REALIZANDO A VERIFICAÇÃO DOS SEUS DOCUMENTOS. POR FAVOR, COLABORE COM A EQUIPE.'],
+  ['Macro — tudo regular','TUDO REGULAR. AGRADECEMOS SUA COLABORAÇÃO. O SENHOR(A) ESTÁ LIBERADO. TENHA UM BOM RP!']
+ ],
+ viaturas:[
+  ['Autorização','Somente militares autorizados podem utilizar VTRs oficiais.'],
+  ['Descarte','Toda VTR utilizada deve ser descartada corretamente após o uso.'],
+  ['Ônibus da base','Ao passar pelos ônibus, ligue e desligue-os para evitar despawn, conforme orientação do material.'],
+  ['Uso indevido','É proibido utilizar VTR para fins pessoais ou farm.'],
+  ['Velocidade na base','50 km/h nas vias principais; 30 km/h nas vias secundárias.'],
+  ['Lamborghini','Uso exclusivo para General Adjunto ou Federal.'],
+  ['Reparo na cidade','Não é permitido reparar VTR abatida em área urbana.']
+ ],
+ conduta:[
+  ['Prioridade à vida real','A vida real estará acima do RP. Se precisar sair, faça isso imediatamente, sempre que possível avisando o superior.'],
+  ['Dedicação e postura','Dedicação, postura, paciência, clareza ao orientar recrutas e militares.'],
+  ['Conhecimento e ordens','Conhecer as regras do servidor e da base; cumprir ordens dos superiores e comandantes do setor.'],
+  ['Respeito e continência','Tratar todos com respeito; utilizar Sr. ou Sra. quando adequado; prestar continência aos superiores.'],
+  ['Contato com Alto Comando','O contato direto com membros do Alto Comando deve ocorrer quando necessário e quando não for possível localizar o comando imediato.'],
+  ['Disciplina em call','Não interromper superiores em call nem abrir o microfone durante formações sem autorização.'],
+  ['Denúncias','Encaminhar denúncias com provas, como vídeos ou prints, ao comando responsável.'],
+  ['AFK','É proibido permanecer AFK por mais de 5 minutos sem justificativa.'],
+  ['Regras de eventos','Não abandonar a base sem autorização durante eventos; não atirar nos checkpoints; não realizar farm; evitar disparos quando aliados estiverem próximos do alvo; seguir o Alto Comando em caso de baixo efetivo; não interagir com faccionados.'],
+  ['Férias','O material destina férias exclusivamente a situações de força maior ou descanso mental. Durante as férias, o militar não pode farmar, permanecer circulando pela base e deve informar caso renasça na base.'],
+  ['Avisos importantes','Formações: até 5 minutos; QTX deve ser justificado; ausências repetidas podem resultar em reprimenda ou exoneração; portarias permanentemente ocupadas; COD 08 exige apresentação imediata de toda a base.']
+ ],
+ codigos:[
+  ['Código P — permissões','PPF: permissão para falar; PPAX: permissão para auxiliar; PPEF: permissão para entrar em formação; PPSI: permissão para simulação de invasão; PPT: permissão para treinamento; PPIC: permissão para ir para cidade; PPS: permissão para sair; PPA: permissão para assistir; PPR: permissão para recrutar.'],
+  ['Códigos especiais','COD 8: portaria vazia — QRV BASE. COD 7: ataque em massa.'],
+  ['Código V — direção','VSS: veículo sentido Sul; VST: sentido Terra; VSP: sentido Papa; VSC: sentido Centro; VSL: sentido Leste; VSN: sentido Norte.']
+ ]
+};
+for(const [id,label] of novosManuais){
+ editablePages.push([id,label]);
+ pages.splice(pages.findIndex(x=>x[0]==='admin'),0,[id,'▤',label]);
+}
+const defaultEditorialAnterior=defaultEditorial;
+defaultEditorial=function(p){if(materiaisIniciais[p])return materiaisIniciais[p].map(([title,body],i)=>({id:'manual-'+p+'-'+i,title,body}));return defaultEditorialAnterior(p)};
+const editorialPageAnterior=editorialPage;
+editorialPage=function(p){
+ if(!materiaisIniciais[p])return editorialPageAnterior(p);
+ const titulo=novosManuais.find(x=>x[0]===p)?.[1]||p;
+ const itens=editorialRecords(p);
+ return heading(titulo.toUpperCase(),'Central de Estudos · Material Semideus Master')+wrap('<p class="muted">Conteúdo de referência do material de estudo do Exército de Lomita. Confira atualizações com o Alto Comando.</p>'+itens.map(x=>block(esc(x.title),esc(x.body))).join('')+'<button class="goldbtn" onclick="go(\'estudos\')">VOLTAR A ESTUDOS <span>➜</span></button>');
+};
+const estudosContentAnterior=content;
+content=function(p){
+ if(p!=='estudos')return estudosContentAnterior(p);
+ const atalhos=[['rp','Regras de RP','Interpretação e conduta','▤'],['eb','Regras do EB','Normas da corporação','♜'],['hierarquia','Hierarquia','Patentes e atribuições','♛'],['codigo','Código Q','Comunicação','◈'],['codigos','Códigos P e V','Permissões e direções','◈'],['macros','Macros Militares','Mensagens prontas','▤'],['ronda','Manual de Ronda','Equipes e procedimentos','🚙'],['blitz','Manual de Blitz','Organização e macros','▣'],['viaturas','Manual de Viaturas','Regras de utilização','🚗'],['conduta','Conduta e Eventos','Disciplina e férias','★']];
+ const complementos=editorialRecords('estudos');
+ return heading('CENTRAL DE ESTUDOS','Biblioteca de formação e consulta do Exército de Lomita')+wrap('<p class="muted">Selecione um manual para consultar o conteúdo. As informações podem ser atualizadas pelo Alto Comando no painel administrativo.</p><div class="quick">'+atalhos.map(x=>button(...x)).join('')+'</div><section class="panel" style="margin-top:18px"><h3>ORIENTAÇÕES DE ESTUDO</h3>'+complementos.map(x=>block(esc(x.title),esc(x.body))).join('')+'</section>');
+};
+
 const beforeEditorialContent=content;
 content=function(p){return editablePages.some(x=>x[0]===p)?editorialPage(p):beforeEditorialContent(p)};
 const beforeEditorialAdminContent=adminContent;

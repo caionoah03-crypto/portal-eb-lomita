@@ -389,4 +389,47 @@ render=function(){const p=decodeURIComponent(location.hash.slice(1))||'inicio';i
  oldMaterialRender();
 };
 
+
+/* CRONOGRAMA FIXO DIÁRIO — horário de Brasília, eventos de 15 minutos. */
+const cronogramaFixo=[
+ ['11:00','Roubo ao Arsenal — Exército'],
+ ['11:30','Entrega de Drone'],
+ ['13:00','Roubo ao Arsenal — Exército'],
+ ['14:30','Entrega de Drone'],
+ ['15:00','Roubo ao Arsenal — Exército'],
+ ['17:00','Roubo ao Arsenal — Exército'],
+ ['18:30','Entrega de Drone']
+];
+function horarioBrasilia(){
+ const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(new Date());
+ const get=t=>Number(parts.find(p=>p.type===t).value);
+ return get('hour')*3600+get('minute')*60+get('second');
+}
+function tempoRestante(segundos){
+ const h=Math.floor(segundos/3600),m=Math.floor((segundos%3600)/60),s=segundos%60;
+ return (h?`${h}h `:'')+`${m}min ${String(s).padStart(2,'0')}s`;
+}
+function cronogramaDinamico(){
+ const agora=horarioBrasilia();
+ const agenda=cronogramaFixo.map(([hora,nome])=>({hora,nome,inicio:(Number(hora.slice(0,2))*60+Number(hora.slice(3)))*60}));
+ const ativo=agenda.find(e=>agora>=e.inicio&&agora<e.inicio+900);
+ const proximo=agenda.find(e=>e.inicio>agora)||agenda[0];
+ const amanha=proximo.inicio<=agora;
+ const falta=proximo.inicio+(amanha?86400:0)-agora;
+ const card=ativo?`<section class="panel" style="border:1px solid #d8b46b;margin-bottom:16px"><h3>🟢 EVENTO EM ANDAMENTO</h3><h2>${esc(ativo.nome)}</h2><p><b>${ativo.hora}–${String(Number(ativo.hora.slice(0,2))+Math.floor((Number(ativo.hora.slice(3))+15)/60)).padStart(2,'0')}:${String((Number(ativo.hora.slice(3))+15)%60).padStart(2,'0')}</b> · Termina em ${tempoRestante(ativo.inicio+900-agora)}</p></section>`:'';
+ const linhas=agenda.map(e=>{
+ const passou=agora>=e.inicio+900,emCurso=agora>=e.inicio&&agora<e.inicio+900;
+ const fim=e.inicio+900;
+ const fimHora=String(Math.floor(fim/3600)).padStart(2,'0')+':'+String(Math.floor((fim%3600)/60)).padStart(2,'0');
+ return `<div class="rule" style="display:flex;gap:12px;justify-content:space-between;align-items:center;opacity:${passou?.6:1}"><div><b>${esc(e.nome)}</b><p style="margin:2px 0">${e.hora}–${fimHora}</p></div><small>${emCurso?'EM ANDAMENTO':passou?'ENCERRADO':'AGENDADO'}</small></div>`;
+ }).join('');
+ return `<section class="panel" style="margin-bottom:16px"><h3>⏳ PRÓXIMO EVENTO ${amanha?'— AMANHÃ':'— HOJE'}</h3><h2>${esc(proximo.nome)}</h2><p><b>${proximo.hora}</b> · Começa em <strong>${tempoRestante(falta)}</strong></p><small>Horário de Brasília (UTC−3) · Programação diária · Duração: 15 minutos</small></section>${card}<section class="panel"><h3>PROGRAMAÇÃO DIÁRIA</h3>${linhas}</section>`;
+}
+const conteudoAntesCronograma=content;
+content=function(p){
+ if(p!=='cronograma')return conteudoAntesCronograma(p);
+ return heading('CRONOGRAMA','Eventos diários do Exército de Lomita')+wrap(`<div id="cronograma-automatico">${cronogramaDinamico()}</div><section class="panel" style="margin-top:16px"><h3>EVENTOS EXTRAORDINÁRIOS / COMUNICADOS PELO COMANDO</h3>${eventsMarkup()}</section>`);
+};
+setInterval(()=>{const el=document.getElementById('cronograma-automatico');if(el)el.innerHTML=cronogramaDinamico()},1000);
+
 </script></body></html>

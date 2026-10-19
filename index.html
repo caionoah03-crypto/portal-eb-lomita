@@ -236,7 +236,7 @@ const efetivoSorted=()=>efetivoRecords.slice().sort((a,b)=>String(a.patente).loc
 function efetivoPublicPage(){
  const status=efetivoError?`<div class="admin-note">${esc(efetivoError)}</div>`:!efetivoLoaded?'<p class="muted">Carregando efetivo...</p>':'';
  const rows=efetivoSorted().map(p=>`<tr><td>${esc(p.nome_militar)}</td><td>${esc(p.patente)}</td><td>${esc(p.cargo||'—')}</td><td>${esc(p.situacao)}</td></tr>`).join('');
- return heading('CONTROLE DE EFETIVO','Relação de militares do Setor Norte')+wrap(`<section class="panel"><h3>EFETIVO DO SETOR NORTE</h3><p class="muted">Consulta disponível aos administradores autorizados. Não são utilizadas fotografias.</p>${!isAdmin?'<div class="admin-note">Para consultar o efetivo, entre na área Administração com uma conta autorizada.</div>':status+(efetivoLoaded?`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;text-align:left"><thead><tr><th>Nome militar</th><th>Patente</th><th>Função</th><th>Situação</th></tr></thead><tbody>${rows||'<tr><td colspan="4">Nenhum militar cadastrado.</td></tr>'}</tbody></table></div>`:'')}</section>`);
+ return heading('CONTROLE DE EFETIVO','Relação de militares do Setor Norte')+wrap(`<section class="panel"><h3>EFETIVO DO SETOR NORTE</h3><p class="muted">Consulta pública dos militares do Setor Norte. Não são utilizadas fotografias. O cadastro e as alterações exigem login autorizado.</p>${status+(efetivoLoaded?`<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;text-align:left"><thead><tr><th>Nome militar</th><th>Patente</th><th>Função</th><th>Situação</th></tr></thead><tbody>${rows||'<tr><td colspan="4">Nenhum militar cadastrado.</td></tr>'}</tbody></table></div>`:'')}</section>`);
 }
 function norteAdminPage(){
  return heading('PAINEL — COMANDO NORTE','Acesso restrito ao Controle de Efetivo')+wrap(`<div class="admin-note"><b>Conta do Comando Norte.</b> Gerenciamento do efetivo do setor. ${esc(adminEmail)} · <button class="admin-action" onclick="logoutAdmin()">SAIR</button></div><section class="panel">${efetivoAdminContent()}</section>`);
@@ -250,9 +250,9 @@ function efetivoAdminContent(){
  return `<h3>CONTROLE DE EFETIVO — SETOR NORTE</h3><p class="muted">Cadastre e atualize militares do setor. Sem fotografias.</p>${efetivoError?`<div class="admin-note">${esc(efetivoError)}</div>`:''}<div class="admin-pill">${efetivoRecords.length} militar(es)</div><div style="margin-top:14px">${efetivoLoaded?(entries||'<div class="admin-empty">Nenhum militar cadastrado.</div>'):'<p class="muted">Carregando dados...</p>'}</div><h3 style="margin-top:22px">${obj?'EDITAR MILITAR':'CADASTRAR MILITAR'}</h3><form class="admin-form" onsubmit="saveEfetivo(event)"><label>Nome militar<input name="nome_militar" required maxlength="120" value="${esc(obj?.nome_militar||'')}"></label><label>Patente<input name="patente" required maxlength="100" value="${esc(obj?.patente||'')}"></label><label>Cargo / função<input name="cargo" maxlength="160" value="${esc(obj?.cargo||'')}"></label><label>Situação<select name="situacao">${select}</select></label><div class="admin-toolbar"><button type="submit">${obj?'SALVAR ALTERAÇÕES':'CADASTRAR MILITAR'}</button>${obj?'<button type="button" onclick="efetivoEditId=null;render()">CANCELAR</button>':''}</div></form>`;
 }
 async function loadEfetivo(){
- if(!cloudMode||!isAdmin)return;
+ if(!cloudMode)return;
  try{
-  const rows=await api('/rest/v1/efetivo_norte?select=id,nome_militar,patente,cargo,situacao&order=nome_militar.asc',{},true);
+  const rows=await api('/rest/v1/efetivo_norte?select=id,nome_militar,patente,cargo,situacao&order=nome_militar.asc',{},Boolean(isAdmin&&session?.access_token));
   efetivoRecords=Array.isArray(rows)?rows:[];efetivoError='';efetivoLoaded=true;
  }catch(e){efetivoError='Não foi possível carregar o efetivo: '+e.message;efetivoLoaded=false}
  const p=decodeURIComponent(location.hash.slice(1));

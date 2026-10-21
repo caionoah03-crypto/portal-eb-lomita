@@ -717,5 +717,20 @@ switchAdmin=function(tab){if(tab==='auditoria'&&adminRole!=='general_federal')re
 
 const logoutAntesAuditoria=logoutAdmin;
 logoutAdmin=async function(){auditoriaRegistros=[];auditoriaCarregada=false;auditoriaDetalhe='';auditoriaAdmin='';await logoutAntesAuditoria()};
+
+/* ORGANIZAÇÃO ALFABÉTICA — Início e Administração permanecem fixos no topo. */
+const compararMenu=(a,b)=>a.localeCompare(b,'pt-BR',{sensitivity:'base'});
+menuQuick.splice(0,menuQuick.length,'inicio','admin');
+const grupoInformacoes={id:'informacoes',label:'Informações e Agenda',icon:'▤',items:['comunicados','cronograma']};
+menuSections.push(grupoInformacoes);
+const grupoSistema=menuSections.find(g=>g.id==='sistema');
+if(grupoSistema)menuSections.splice(menuSections.indexOf(grupoSistema),1);
+for(const grupo of menuSections){
+ grupo.items=grupo.items.filter(id=>id!=='inicio'&&id!=='admin');
+ grupo.items.sort((a,b)=>compararMenu(pages.find(p=>p[0]===a)?.[2]||a,pages.find(p=>p[0]===b)?.[2]||b));
+}
+menuSections.sort((a,b)=>compararMenu(a.label,b.label));
+adminTabs.sort((a,b)=>compararMenu(a[1],b[1]));
+
 render();
 </script></body></html>
